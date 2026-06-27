@@ -4,36 +4,47 @@ session_start();
 
 include("../api/koneksi.php");
 
-$username=$_POST['username'];
-$password=$_POST['password'];
+// ✅ FIX: validasi input ada
+if (!isset($_POST['username']) || !isset($_POST['password'])) {
+    header("Location: login.php");
+    exit;
+}
 
-$query=pg_query($conn,"
-SELECT *
-FROM admin
-WHERE username='$username'
-AND password='$password'
-");
+$username = trim($_POST['username']);
+$password = $_POST['password'];
 
-if(pg_num_rows($query)>0){
+// ✅ FIX: gunakan pg_query_params() untuk mencegah SQL Injection
+// Ambil data berdasarkan username saja, password dicek pakai password_verify()
+$query = pg_query_params($conn, "
+    SELECT *
+    FROM admin
+    WHERE username = $1
+", [$username]);
 
-$_SESSION['login']=true;
+if ($query && pg_num_rows($query) > 0) {
 
-header("Location:dashboard.php");
+    $row = pg_fetch_assoc($query);
 
-}else{
+    // ✅ FIX: cek password dengan password_verify()
+    // Pastikan password di database sudah di-hash dengan password_hash()
+    // Kalau password di DB masih plain text, ganti kondisi ini sementara:
+    //   if ($row['password'] === $password) {
+    if (password_verify($password, $row['password'])) {
 
-echo"
+        $_SESSION['login'] = true;
+        $_SESSION['username'] = $row['username'];
 
-<script>
+        header("Location: dashboard.php");
+        exit;
 
-alert('Username atau Password salah');
-
-location='login.php';
-
-</script>
-
-";
+    }
 
 }
 
-?>
+// Login gagal
+echo "
+<script>
+alert('Username atau Password salah');
+location='login.php';
+</script>
+";

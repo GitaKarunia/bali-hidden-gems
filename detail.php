@@ -2,15 +2,28 @@
 
 include("api/koneksi.php");
 
-$id=$_GET['id'];
+// ✅ FIX: validasi input — pastikan id ada dan berupa angka
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    header("Location: index.php");
+    exit;
+}
 
-$data=pg_query($conn,"
-SELECT *
-FROM wisata
-WHERE id_wisata='$id'
-");
+$id = (int) $_GET['id'];
 
-$w=pg_fetch_assoc($data);
+// ✅ FIX: gunakan pg_query_params() untuk mencegah SQL Injection
+$result = pg_query_params($conn, "
+    SELECT *
+    FROM wisata
+    WHERE id_wisata = $1
+", [$id]);
+
+// Kalau data tidak ditemukan, kembalikan ke halaman utama
+if (!$result || pg_num_rows($result) === 0) {
+    header("Location: index.php");
+    exit;
+}
+
+$w = pg_fetch_assoc($result);
 
 ?>
 <!DOCTYPE html>
@@ -24,7 +37,7 @@ $w=pg_fetch_assoc($data);
 <meta name="viewport"
 content="width=device-width, initial-scale=1.0">
 
-<title><?= $w['nama_wisata']; ?></title>
+<title><?= htmlspecialchars($w['nama_wisata']); ?> — Bali Hidden Gems</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
@@ -152,25 +165,27 @@ background:#14b8a6;
 
 <div class="detail">
 
-<img src="uploads/<?= $w['foto']; ?>">
+<img
+    src="uploads/<?= htmlspecialchars($w['foto']); ?>"
+    alt="<?= htmlspecialchars($w['nama_wisata']); ?>">
 
 <div class="content">
 
 <span class="kategori">
 
-<?= $w['kategori']; ?>
+<?= htmlspecialchars($w['kategori']); ?>
 
 </span>
 
 <h1>
 
-<?= $w['nama_wisata']; ?>
+<?= htmlspecialchars($w['nama_wisata']); ?>
 
 </h1>
 
 <p>
 
-<?= nl2br($w['deskripsi']); ?>
+<?= nl2br(htmlspecialchars($w['deskripsi'])); ?>
 
 </p>
 
@@ -182,7 +197,7 @@ background:#14b8a6;
 
 <p>
 
-<?= $w['latitude']; ?>
+<?= htmlspecialchars($w['latitude']); ?>
 
 </p>
 
@@ -194,7 +209,7 @@ background:#14b8a6;
 
 <p>
 
-<?= $w['longitude']; ?>
+<?= htmlspecialchars($w['longitude']); ?>
 
 </p>
 
@@ -206,9 +221,10 @@ background:#14b8a6;
 
 class="btn"
 
-href="https://www.google.com/maps?q=<?= $w['latitude']; ?>,<?= $w['longitude']; ?>"
+href="https://www.google.com/maps?q=<?= urlencode($w['latitude']); ?>,<?= urlencode($w['longitude']); ?>"
 
-target="_blank">
+target="_blank"
+rel="noopener noreferrer">
 
 🗺 Buka Google Maps
 
@@ -231,4 +247,3 @@ href="index.php">
 </body>
 
 </html>
-

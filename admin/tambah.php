@@ -1,56 +1,77 @@
 <?php
 session_start();
 
-if(!isset($_SESSION['login'])){
-    header("Location:login.php");
+if (!isset($_SESSION['login'])) {
+    header("Location: login.php");
     exit;
 }
 
 include("../api/koneksi.php");
 
-if(isset($_POST['simpan'])){
+if (isset($_POST['simpan'])) {
 
-    $nama = $_POST['nama'];
-    $kategori = $_POST['kategori'];
-    $deskripsi = $_POST['deskripsi'];
-    $latitude = $_POST['latitude'];
-    $longitude = $_POST['longitude'];
+    $nama      = trim($_POST['nama']);
+    $kategori  = trim($_POST['kategori']);
+    $deskripsi = trim($_POST['deskripsi']);
+    $latitude  = trim($_POST['latitude']);
+    $longitude = trim($_POST['longitude']);
 
-    // Upload Foto
-    $foto = $_FILES['foto']['name'];
-    $tmp = $_FILES['foto']['tmp_name'];
-
-    if($foto!=""){
-        move_uploaded_file($tmp,"../uploads/".$foto);
+    // ✅ FIX: validasi latitude & longitude harus berupa angka
+    if (!is_numeric($latitude) || !is_numeric($longitude)) {
+        echo "
+        <script>
+        alert('Latitude dan Longitude harus berupa angka.');
+        history.back();
+        </script>
+        ";
+        exit;
     }
 
-    pg_query($conn,"
-    INSERT INTO wisata
-    (
-        nama_wisata,
-        kategori,
-        deskripsi,
-        latitude,
-        longitude,
-        foto
-    )
-    VALUES
-    (
-        '$nama',
-        '$kategori',
-        '$deskripsi',
-        '$latitude',
-        '$longitude',
-        '$foto'
-    )
-    ");
+    // Upload Foto
+    $foto = '';
+    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
 
-    echo "
-    <script>
-    alert('Data berhasil ditambahkan');
-    location='dashboard.php';
-    </script>
-    ";
+        $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
+        $ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $allowed_ext)) {
+            echo "
+            <script>
+            alert('Format foto tidak didukung. Gunakan JPG, PNG, atau WEBP.');
+            history.back();
+            </script>
+            ";
+            exit;
+        }
+
+        // Nama file aman: pakai nama unik supaya tidak bentrok
+        $foto = uniqid('wisata_', true) . '.' . $ext;
+        move_uploaded_file($_FILES['foto']['tmp_name'], "../uploads/" . $foto);
+
+    }
+
+    // ✅ FIX: gunakan pg_query_params() untuk mencegah SQL Injection
+    $result = pg_query_params($conn, "
+        INSERT INTO wisata
+        (nama_wisata, kategori, deskripsi, latitude, longitude, foto)
+        VALUES ($1, $2, $3, $4, $5, $6)
+    ", [$nama, $kategori, $deskripsi, $latitude, $longitude, $foto]);
+
+    if ($result) {
+        echo "
+        <script>
+        alert('Data berhasil ditambahkan');
+        location='dashboard.php';
+        </script>
+        ";
+    } else {
+        echo "
+        <script>
+        alert('Gagal menyimpan data: " . pg_last_error($conn) . "');
+        history.back();
+        </script>
+        ";
+    }
 
 }
 ?>
@@ -176,6 +197,7 @@ required></textarea>
 <input
 type="text"
 name="latitude"
+placeholder="-8.4234"
 required>
 
 <label>Longitude</label>
@@ -183,6 +205,7 @@ required>
 <input
 type="text"
 name="longitude"
+placeholder="115.6234"
 required>
 
 <label>Foto Wisata</label>
@@ -190,7 +213,7 @@ required>
 <input
 type="file"
 name="foto"
-accept=".jpg,.jpeg,.png"
+accept=".jpg,.jpeg,.png,.webp"
 required>
 
 <button

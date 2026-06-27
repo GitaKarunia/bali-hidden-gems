@@ -1,49 +1,82 @@
 <?php
 session_start();
 
-if(!isset($_SESSION['login'])){
-    header("Location:login.php");
+if (!isset($_SESSION['login'])) {
+    header("Location: login.php");
     exit;
 }
 
 include("../api/koneksi.php");
 
-$id=$_GET['id'];
+// ✅ FIX: validasi id harus ada dan berupa angka
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    header("Location: dashboard.php");
+    exit;
+}
 
-if(isset($_POST['update'])){
+$id = (int) $_GET['id'];
 
-    $nama=$_POST['nama'];
-    $kategori=$_POST['kategori'];
-    $deskripsi=$_POST['deskripsi'];
-    $latitude=$_POST['latitude'];
-    $longitude=$_POST['longitude'];
+if (isset($_POST['update'])) {
 
-    pg_query($conn,"
-    UPDATE wisata SET
-    nama_wisata='$nama',
-    kategori='$kategori',
-    deskripsi='$deskripsi',
-    latitude='$latitude',
-    longitude='$longitude'
-    WHERE id_wisata='$id'
-    ");
+    $nama      = trim($_POST['nama']);
+    $kategori  = trim($_POST['kategori']);
+    $deskripsi = trim($_POST['deskripsi']);
+    $latitude  = trim($_POST['latitude']);
+    $longitude = trim($_POST['longitude']);
 
-    echo "
-    <script>
-    alert('Data berhasil diperbarui');
-    location='dashboard.php';
-    </script>
-    ";
+    // ✅ FIX: validasi latitude & longitude harus angka
+    if (!is_numeric($latitude) || !is_numeric($longitude)) {
+        echo "
+        <script>
+        alert('Latitude dan Longitude harus berupa angka.');
+        history.back();
+        </script>
+        ";
+        exit;
+    }
+
+    // ✅ FIX: gunakan pg_query_params() untuk mencegah SQL Injection
+    $result = pg_query_params($conn, "
+        UPDATE wisata SET
+        nama_wisata = $1,
+        kategori    = $2,
+        deskripsi   = $3,
+        latitude    = $4,
+        longitude   = $5
+        WHERE id_wisata = $6
+    ", [$nama, $kategori, $deskripsi, $latitude, $longitude, $id]);
+
+    if ($result) {
+        echo "
+        <script>
+        alert('Data berhasil diperbarui');
+        location='dashboard.php';
+        </script>
+        ";
+    } else {
+        echo "
+        <script>
+        alert('Gagal memperbarui data.');
+        history.back();
+        </script>
+        ";
+    }
 
 }
 
-$data=pg_fetch_assoc(
-pg_query($conn,"
-SELECT *
-FROM wisata
-WHERE id_wisata='$id'
-")
-);
+// ✅ FIX: gunakan pg_query_params() untuk mencegah SQL Injection
+$result = pg_query_params($conn, "
+    SELECT *
+    FROM wisata
+    WHERE id_wisata = $1
+", [$id]);
+
+if (!$result || pg_num_rows($result) === 0) {
+    header("Location: dashboard.php");
+    exit;
+}
+
+$data = pg_fetch_assoc($result);
 
 ?>
 
@@ -158,20 +191,20 @@ background:#1d4ed8;
 <input
 type="text"
 name="nama"
-value="<?= $data['nama_wisata']; ?>"
+value="<?= htmlspecialchars($data['nama_wisata']); ?>"
 required>
 
 <label>Kategori</label>
 
 <select name="kategori">
 
-<option <?= $data['kategori']=="Pantai"?"selected":"" ?>>Pantai</option>
+<option <?= $data['kategori'] == "Pantai"     ? "selected" : "" ?>>Pantai</option>
 
-<option <?= $data['kategori']=="Bukit"?"selected":"" ?>>Bukit</option>
+<option <?= $data['kategori'] == "Bukit"      ? "selected" : "" ?>>Bukit</option>
 
-<option <?= $data['kategori']=="Budaya"?"selected":"" ?>>Budaya</option>
+<option <?= $data['kategori'] == "Budaya"     ? "selected" : "" ?>>Budaya</option>
 
-<option <?= $data['kategori']=="Air Terjun"?"selected":"" ?>>Air Terjun</option>
+<option <?= $data['kategori'] == "Air Terjun" ? "selected" : "" ?>>Air Terjun</option>
 
 </select>
 
@@ -179,14 +212,14 @@ required>
 
 <textarea
 name="deskripsi"
-required><?= $data['deskripsi']; ?></textarea>
+required><?= htmlspecialchars($data['deskripsi']); ?></textarea>
 
 <label>Latitude</label>
 
 <input
 type="text"
 name="latitude"
-value="<?= $data['latitude']; ?>"
+value="<?= htmlspecialchars($data['latitude']); ?>"
 required>
 
 <label>Longitude</label>
@@ -194,7 +227,7 @@ required>
 <input
 type="text"
 name="longitude"
-value="<?= $data['longitude']; ?>"
+value="<?= htmlspecialchars($data['longitude']); ?>"
 required>
 
 <button

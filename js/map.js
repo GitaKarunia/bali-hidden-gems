@@ -2,147 +2,146 @@
 // MEMBUAT PETA
 // ===============================
 
-var map = L.map('map').setView([-8.42,115.62],10);
+var map = L.map('map').setView([-8.42, 115.62], 10);
 
 L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-    attribution:'© OpenStreetMap',
-    maxZoom:19
-}
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19
+    }
 ).addTo(map);
 
 // ===============================
 // VARIABEL
 // ===============================
 
-const sidebar=document.getElementById("wisata-list");
+const sidebar = document.getElementById("wisata-list");
 
-const search=document.getElementById("search");
+const search = document.getElementById("search");
 
-let semuaData=[];
+let semuaData = [];
 
-let semuaMarker=[];
+let semuaMarker = [];
 
 // ===============================
 // AMBIL DATA DATABASE
 // ===============================
 
+// ✅ FIX: tambahkan error handling pada fetch
 fetch("api/wisata.php")
-  .then(res => {
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return res.json();
-  })
-  .then(data => {
-    semuaData = data;
-    tampilkanData(data);
-  })
-  .catch(err => {
-    console.error("Gagal memuat data wisata:", err);
-    sidebar.innerHTML = "<p>Gagal memuat data. Cek koneksi database.</p>";
-  });
+
+    .then(function (res) {
+
+        // Cek apakah HTTP response OK (status 200-299)
+        if (!res.ok) {
+            throw new Error("Server error: HTTP " + res.status);
+        }
+
+        return res.json();
+
+    })
+
+    .then(function (data) {
+
+        // ✅ FIX: cek kalau API mengembalikan error object
+        if (data && data.error) {
+            throw new Error(data.error);
+        }
+
+        semuaData = data;
+
+        tampilkanData(data);
+
+        // ✅ FIX: update statistik setelah data berhasil dimuat
+        const total = document.getElementById("totalWisata");
+        if (total) {
+            total.innerHTML = semuaData.length;
+        }
+
+        // ✅ FIX: fitBounds dipindah ke sini supaya data sudah tersedia
+        if (semuaData.length > 0) {
+            let group = semuaData.map(function (w) {
+                return [parseFloat(w.latitude), parseFloat(w.longitude)];
+            });
+            map.fitBounds(group);
+        }
+
+    })
+
+    .catch(function (err) {
+
+        // ✅ FIX: tampilkan pesan error ke user, bukan diam saja
+        console.error("Gagal memuat data wisata:", err);
+
+        if (sidebar) {
+            sidebar.innerHTML =
+                "<p style='color:#dc2626;padding:20px;text-align:center;'>" +
+                "⚠️ Gagal memuat data wisata.<br><small>" + err.message + "</small>" +
+                "</p>";
+        }
+
+    });
 
 // ===============================
 // TAMPILKAN DATA
 // ===============================
 
-function tampilkanData(data){
+function tampilkanData(data) {
 
-sidebar.innerHTML="";
+    sidebar.innerHTML = "";
 
-semuaMarker.forEach(marker=>{
+    semuaMarker.forEach(function (marker) {
+        map.removeLayer(marker);
+    });
 
-map.removeLayer(marker);
+    semuaMarker = [];
 
-});
+    data.forEach(function (w) {
 
-semuaMarker=[];
+        let foto = "uploads/" + w.foto;
 
-data.forEach(w=>{
+        let marker = L.marker([
+            parseFloat(w.latitude),
+            parseFloat(w.longitude)
+        ]).addTo(map);
 
-let foto="uploads/"+w.foto;
+        marker.bindPopup(`
+            <img src="${foto}" alt="${w.nama_wisata}" style="width:100%;max-height:150px;object-fit:cover;border-radius:8px;">
+            <h3>${w.nama_wisata}</h3>
+            <b>${w.kategori}</b>
+            <p>${w.deskripsi}</p>
+        `);
 
-let marker=L.marker([
-w.latitude,
-w.longitude
-]).addTo(map);
+        semuaMarker.push(marker);
 
-marker.bindPopup(`
+        let card = document.createElement("div");
 
-<img src="${foto}">
+        card.className = "card";
 
-<h3>${w.nama_wisata}</h3>
+        card.innerHTML = `
+            <img src="${foto}" alt="${w.nama_wisata}">
+            <div class="card-body">
+                <h3>${w.nama_wisata}</h3>
+                <div class="kategori">${w.kategori}</div>
+                <p>${w.deskripsi.substring(0, 100)}...</p>
+                <a
+                    href="detail.php?id=${w.id_wisata}"
+                    class="btn-detail"
+                    onclick="event.stopPropagation()">
+                    Lihat Detail
+                </a>
+            </div>
+        `;
 
-<b>${w.kategori}</b>
+        card.onclick = function () {
+            map.setView([parseFloat(w.latitude), parseFloat(w.longitude)], 15);
+            marker.openPopup();
+        };
 
-<p>
+        sidebar.appendChild(card);
 
-${w.deskripsi}
-
-</p>
-
-`);
-
-semuaMarker.push(marker);
-
-let card=document.createElement("div");
-
-card.className="card";
-
-card.innerHTML=`
-
-<img src="${foto}">
-
-<div class="card-body">
-
-<h3>
-
-${w.nama_wisata}
-
-</h3>
-
-<div class="kategori">
-
-${w.kategori}
-
-</div>
-
-<p>
-
-${w.deskripsi.substring(0,100)}...
-
-</p>
-
-<a
-href="detail.php?id=${w.id_wisata}"
-class="btn-detail"
-onclick="event.stopPropagation()">
-
-Lihat Detail
-
-</a>
-
-</div>
-
-`;
-
-card.onclick=function(){
-
-map.setView(
-[
-w.latitude,
-w.longitude
-],
-15
-);
-
-marker.openPopup();
-
-};
-
-sidebar.appendChild(card);
-
-});
+    });
 
 }
 
@@ -150,63 +149,22 @@ sidebar.appendChild(card);
 // SEARCH REALTIME
 // ===============================
 
-if(search){
+if (search) {
 
-search.addEventListener("keyup",function(){
+    search.addEventListener("keyup", function () {
 
-let keyword=this.value.toLowerCase();
+        let keyword = this.value.toLowerCase();
 
-let hasil=semuaData.filter(function(w){
+        let hasil = semuaData.filter(function (w) {
+            return (
+                w.nama_wisata.toLowerCase().includes(keyword) ||
+                w.kategori.toLowerCase().includes(keyword)
+            );
+        });
 
-return(
+        tampilkanData(hasil);
 
-w.nama_wisata.toLowerCase().includes(keyword) ||
-
-w.kategori.toLowerCase().includes(keyword)
-
-);
-
-});
-
-tampilkanData(hasil);
-
-});
-
-}
-
-// ===============================
-// HITUNG STATISTIK OTOMATIS
-// ===============================
-
-const total=document.getElementById("totalWisata");
-
-if(total){
-
-total.innerHTML=semuaData.length;
-
-}
-
-// ===============================
-// FIT BOUNDS
-// ===============================
-
-if(semuaData.length>0){
-
-let group=[];
-
-semuaData.forEach(function(w){
-
-group.push([
-
-parseFloat(w.latitude),
-
-parseFloat(w.longitude)
-
-]);
-
-});
-
-map.fitBounds(group);
+    });
 
 }
 
@@ -214,40 +172,28 @@ map.fitBounds(group);
 // FILTER KATEGORI
 // ===============================
 
-const kategori=document.getElementById("kategori");
+const kategori = document.getElementById("kategori");
 
-if(kategori){
+if (kategori) {
 
-kategori.addEventListener("change",function(){
+    kategori.addEventListener("change", function () {
 
-let value=this.value;
+        let value = this.value;
 
-if(value=="Semua"){
+        if (value == "Semua") {
+            tampilkanData(semuaData);
+            return;
+        }
 
-tampilkanData(semuaData);
+        let hasil = semuaData.filter(function (w) {
+            return w.kategori == value;
+        });
 
-return;
+        tampilkanData(hasil);
 
-}
-
-let hasil=semuaData.filter(function(w){
-
-return w.kategori==value;
-
-});
-
-tampilkanData(hasil);
-
-});
+    });
 
 }
-
-// ===============================
-// ICON BERBEDA SETIAP KATEGORI
-// ===============================
-
-// Jika nanti ingin memakai icon custom,
-// tinggal ganti marker menjadi icon Leaflet.
 
 // ===============================
 // SELESAI
