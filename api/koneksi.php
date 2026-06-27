@@ -1,15 +1,1 @@
-<?php
-
-$conn = pg_connect(
-    "host="     . getenv("PGHOST")     .
-    " port="    . getenv("PGPORT")     .
-    " dbname="  . getenv("PGDATABASE") .
-    " user="    . getenv("PGUSER")     .
-    " password=". getenv("PGPASSWORD")
-);
-
-if (!$conn) {
-    // Jangan pakai die() — biarkan file pemanggil yang handle error
-    // supaya response tetap bisa berupa JSON
-    $conn = null;
-}
+<?php $conn = pg_connect( "host=postgres.railway.internal " . "port=5432 " . "dbname=railway " . "user=postgres " . "password=PASSWORD_ANDA" ); if (!$conn) { die("Koneksi gagal: " . pg_last_error()); } echo "Koneksi berhasil!";
