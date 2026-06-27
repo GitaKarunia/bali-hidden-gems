@@ -1,3 +1,5 @@
+<?php
+
 $conn = pg_connect(
     "host=" . getenv("PGHOST") .
     " port=" . getenv("PGPORT") .
