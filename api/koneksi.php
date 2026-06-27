@@ -1,1 +1,1 @@
-<?php $conn = pg_connect( "host=postgres.railway.internal " . "port=5432 " . "dbname=railway " . "user=postgres " . "password=PASSWORD_ANDA" ); if (!$conn) { die("Koneksi gagal: " . pg_last_error()); } echo "Koneksi berhasil!";
+<?php $conn = pg_connect( "host=postgres.railway.internal " . "port=5432 " . "dbname=railway " . "user=postgres " . "password=${{POSTGRES_PASSWORD}}" ); if (!$conn) { die("Koneksi gagal: " . pg_last_error()); } echo "Koneksi berhasil!";
