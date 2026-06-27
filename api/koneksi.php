@@ -1,11 +1,11 @@
-<?php
-
 $conn = pg_connect(
-"host=localhost port=5432 dbname=bali_hidden_gems user=postgres password=gisti"
+    "host=" . getenv("PGHOST") .
+    " port=" . getenv("PGPORT") .
+    " dbname=" . getenv("PGDATABASE") .
+    " user=" . getenv("PGUSER") .
+    " password=" . getenv("PGPASSWORD")
 );
 
 if (!$conn) {
     die("Koneksi gagal");
 }
-
-?>
