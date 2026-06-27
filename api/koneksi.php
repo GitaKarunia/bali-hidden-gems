@@ -9,5 +9,6 @@ $conn = pg_connect(
 );
 
 if (!$conn) {
-    die("Koneksi gagal");
+    // Jangan pakai die() di sini, biarkan caller yang handle
+    $conn = null;
 }
