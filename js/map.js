@@ -29,16 +29,18 @@ let semuaMarker=[];
 // ===============================
 
 fetch("api/wisata.php")
-
-.then(res=>res.json())
-
-.then(data=>{
-
-    semuaData=data;
-
+  .then(res => {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  })
+  .then(data => {
+    semuaData = data;
     tampilkanData(data);
-
-});
+  })
+  .catch(err => {
+    console.error("Gagal memuat data wisata:", err);
+    sidebar.innerHTML = "<p>Gagal memuat data. Cek koneksi database.</p>";
+  });
 
 // ===============================
 // TAMPILKAN DATA
